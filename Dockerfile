@@ -1,6 +1,6 @@
 FROM python:3.9.5-slim-buster
 
-RUN apt-get update && apt-get upgrade && apt-get install add ca-certificates ffmpeg brotli
+RUN apt-get update -y && apt-get upgrade -y && apt-get install add ca-certificates ffmpeg brotli -y
 
 RUN mkdir /app/
 ADD . /app/
