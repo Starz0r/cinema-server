@@ -1,0 +1,182 @@
+This document describes the protocol for Cinema known as Cinemasync. Currently the protocol is at version `0`. 
+
+Transport
+----------
+Cinemasync is entirely transport-agnostic, so you can choose any transport on top of whatever you'd like to implement it in. The current recommendation is to use WebSockets in text mode, as they are the most widely used and available. The latency they add is not usually an issue as the protocol in general is not extremely latency sensitive. That said, if you are trying to make it available to clients who's internet is not very good, or where they are very far away from the server (1000msec+), then implementing on top of a thinner transport might be better for your use case.
+
+Protocol
+----------
+The protocol itself is based on RPC-like systems, and is defined like so: The first part of the message is the command, casing should not matter when matching, but in any event, it should always be capitalized. There is a space after the command, and then the payload encoded in JSON. In the future, there might be support for binary encoded payloads for lower latency, but for now, JSON payloads are good enough. All messages are also prefixed with a "Request ID". This is typically a number (uint64), to identify which responses go with which request.
+
+The server can have rooms run in one of two modes, Follow-The-Leader, or Leaderless. Right now only Follow-The-Leader (furthermore known as FTL) has been implemented.
+
+FTL works by assign a room a "leader", this is usually, if not always, be the one who opened the room initially. The leader will then periodically send out updates on the video's current position, and any manual changes made to it. Though, other users with the proper permissions can change the video position if desired. The "leader" can also be polled manually by a client if there is a circumstance in which you would want to know this immediately, rather than waiting. This however is rate-limited to avoid DoS (denial-of-service) on the leader. In the case the leader leaves the room, a new leader can be assigned immediately after, if desired, however this is not required, and the default option is usually to just close the room if this happens.
+					
+Commands
+-----------
+Commands fall into two categories of the following: C->S (client to server) or S->C (server to client).
+
+OK - S->C
+	Signifies a successfully ran command where the user only cares if the command finishes without issue. Message contains just this and no further information.
+	
+ERR - S->C
+	A previously ran command had an error or could not be finished. Can contains details about the error, but this is not required and you should not expect it. Details are structured like so:
+	```
+		err: String required
+		code: Integer optional
+		reason: String optional
+		details: String optional
+	```
+	
+RESULTS - S->C
+	The results of a long-running command. This only returns if the client meets the requirements (auth, and perm). The contents vary depending on the command ran.
+	
+HELLO - C->S
+	Gives identifying information to the server, like client name, room password, device, and more. Propagates to `JOIN` on `RESULTS. Returns `RESULTS` or `ERR`.
+	```
+		name: String required
+		passwd: String optional
+	```
+	On: `RESULTS`:
+		```
+			occupants: String[] required
+			queue: QueueItem[] optional {
+				media: MediaInfo required {
+					url: String required
+					title: String required
+					duration: Double required
+				}
+				submitted_by: String required
+			}
+			roomstate: RoomState required {
+				nowplaying: String required
+				position: Double required
+				paused: Boolean required
+			}
+		```
+	Possible errors:
+		```
+			BADPASSWD
+			NONEXISTANT
+			FULLOCCUPANCY
+		```
+		
+JOIN - S->C
+	Notifies everyone that a new user has joined the room.
+	```
+		user: String required
+	```
+		
+NOWPLAYING - S->C
+	The current video has either finished or been skipped. Clients should generally handle this by calling `.popleft()` on their Deque datastructure, and start playing the new media. The media now being played can be passed as a hint, but is completely optional as clients should manage and maintain their own lists.
+	```
+		media: String optional
+	```
+	
+ENQUEUE - C->S
+	Requests a video to be added to queue. Might require additional permissions depending on room or server settings. Maybe Authoritative. Returns `OK` or `ERR`. Propagates to `ENQUEUED` on `OK`.
+	```
+		url: String required
+	```
+	Possible errors:
+		```
+			UNAUTHORIZED
+			PARTIALINFO
+			NOFETCHINFO
+		```
+
+DEQUE - C->S
+	Requests a video be removed from queue, can always be done if the submission is yours. Might require additional permissions if the submission is not yours. Maybe Authoritative. Propagates to `DEQUEUED` on `OK`. Returns `OK` or `ERR`.
+	```
+		index: Integer required
+	```
+	Possible errors:
+		```
+			UNAUTHORIZED
+			INVALIDINDEX
+		```
+	
+PAUSING - S->C
+	A user has paused the current media, and all other Clients must follow suite. The position can also be passed along with this command as a hint, but it is entirely optional as well-behaved clients should be synced up already, and the hinted position could be malicious or out of sync by some magnitude of time.
+	```
+		position: Double optional
+	```
+
+RESUMING - S->C
+	A user has resume the current media, and all other Clients must follow suite. This is always empty.
+	
+SEEKING - S->C
+	A user has start seeking to a different position in the current media.
+	```
+		position: Double required
+	```
+	
+ENQUEUED - S->C
+	Adds new media into the back of the queue.
+	```
+		url: String required
+		media: MediaInfo optional {
+			url: String required
+			title: String required
+			duration: Double required
+		}
+		submitted_by: String optional
+	```
+	
+DEQUEUED - S->C
+	Removes media from the queue. The URL can also be included as a hint, but it is generally not recommended to rely on this ever, as you can have multiple of the same item in the queue.
+	```
+		index: Integer required
+		url: String optional
+	```
+
+PAUSE - C->S
+	Pauses the currently playing media. The position can be sent along as a hint to the server, but it can also ignore it. Propagates to `PAUSING` on `OK`. Returns `OK` or `ERR`.
+	```
+		position: Double optional
+	```
+	Possible errors:
+	```
+		UNAUTHORIZED
+		ALREADYPAUSED
+		NOTHINGPLAYING
+	```
+	
+RESUME - C->S
+	Resumes the currently playing media. This is always empty. Propagates to `RESUMING` on `OK`. Returns `OK` or `ERR`.
+	Possible errors:
+	```
+		UNAUTHORIZED
+		ALREADYPLAYING
+		NOTHINGPLAYING
+	```
+	
+SEEK - C->S
+	Seeks to a position on the currently playing media. Propagates to `SEEKING` on `OK`. Returns `OK` or `ERR`.
+	```
+		position: Double required
+	```
+	Possible errors:
+	```
+		UNAUTHORIZED
+		NOTHINGPLAYING
+		OUTOFRANGE
+	```
+
+PART - S->C
+
+SKIPPED
+
+		
+										
+ROOMSTATE - Client
+	Information on what's being watched, and how far along it is, and if it's paused. Can only be sent by a leader or relevant body. Authoritative. Propagates to `UPDATE`. Can return `ERR`.
+	
+QUEUEDETAILS - Client
+	Asks the server or leader for details on every item in queue, title, length, position, and who requested it. Returns `OK`, `ERR`, or `RESULTS`.
+						
+SKIP - Client
+	Skips the current video in it's entirety. Can only be done by the leader, relevant body, or if the user owns the submission. Authoritative. Propagates to `UPDATE`. Returns `RESULTS` or `ERR`.
+
+VOTESKIP - Client
+	Requests that the current video be skipped. Adds towards a count, upon once when it reaches the majority, it will be skipped. Maybe Authoritative. Propagates to `UPDATE`. Returns `RESULTS` or `ERR`.

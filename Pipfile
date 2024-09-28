@@ -1,0 +1,22 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+ujson = "==5.9.0"
+anyio = "==3.7.1"
+structlog = "==22.3.0"
+sqids = "==0.4.1"
+pydantic = "==2.4.2"
+httpx = "==0.25.0"
+requests = "==2.32.3"
+websockets = "==12.0"
+fastapi = "==0.103.1"
+uvicorn = {version = "==0.23.2", extras = ["standard"]}
+yt-dlp = {version = "==2024.8.6", extras = ["curl-cffi", "default", "secretstorage"]}
+
+[dev-packages]
+
+[requires]
+python_version = "3.9"
