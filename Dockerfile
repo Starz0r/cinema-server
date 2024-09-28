@@ -1,5 +1,6 @@
 FROM python:3.9.5-slim-buster
 
+ENV DEBIAN_FRONTEND "noninteractive"
 RUN apt-get update -y && apt-get upgrade -y && apt-get install add ca-certificates ffmpeg brotli -y
 
 RUN mkdir /app/
