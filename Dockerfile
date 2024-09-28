@@ -1,7 +1,7 @@
 FROM python:3.9.5-slim-buster
 
 ARG DEBIAN_FRONTEND "noninteractive"
-RUN sudo apt-get update && sudo apt-get upgrade && sudo apt-get install add ca-certificates ffmpeg brotli
+RUN apt-get update && apt-get install add ca-certificates ffmpeg brotli
 
 RUN mkdir /app/
 ADD . /app/
