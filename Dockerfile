@@ -10,7 +10,7 @@ WORKDIR /app
 RUN pip install pipenv==2023.3.20
 RUN pipenv install --system --deploy
 
-RUN apt-get install git
+RUN apt-get install git -y
 
 ENTRYPOINT [ "python", "-m src.main" ]
 CMD []
