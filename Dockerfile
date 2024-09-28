@@ -12,5 +12,5 @@ RUN pipenv install --system --deploy
 
 RUN apt-get install git -y
 
-ENTRYPOINT [ "python", "-m src.main" ]
+ENTRYPOINT [ "python", "-m", "src.main" ]
 CMD []
