@@ -60,15 +60,15 @@ def on_shutdown():
 async def main() -> int:
     APP.state.running = True
 
-    LOGGER.info("activating CORS middleware")
-    origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
-    APP.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    #LOGGER.info("activating CORS middleware")
+    #origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+    #APP.add_middleware(
+    #    CORSMiddleware,
+    #    allow_origins=origins,
+    #    allow_credentials=True,
+    #    allow_methods=["*"],
+    #    allow_headers=["*"],
+    #)
 
     LOGGER.info("exposing Theaters REST API")
     APP.include_router(theaters.ROUTER, prefix="/api/v0", tags=["theaters"])
