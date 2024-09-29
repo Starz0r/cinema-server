@@ -121,7 +121,7 @@ async def main() -> int:
         )
 
     LOGGER.info("starting the HTTP server")
-    uv_cfg = uvicorn.Config(APP, port=5050, log_level="debug")
+    uv_cfg = uvicorn.Config(APP, host="0.0.0.0", port=5050, log_level="debug")
     srv = uvicorn.Server(uv_cfg)
 
     for room in APP.state.rooms.get_all():
